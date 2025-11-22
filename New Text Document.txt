@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Escape The Classroom — بازی آموزشی انگلیسی</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#7c3aed; --muted:#9aa7b2; --glass: rgba(255,255,255,0.03);
+    --success:#16a34a; --danger:#ef4444; --gold:#f59e0b;
+    --radius:14px; --pad:18px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: "Helvetica Neue", Arial, sans-serif; background:
+    radial-gradient(circle at 10% 10%, rgba(124,58,237,0.12), transparent 10%),
+    radial-gradient(circle at 90% 90%, rgba(34,197,94,0.04), transparent 15%),
+    var(--bg); color:#e6eef6; -webkit-font-smoothing:antialiased;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+
+  .app{
+    width:100%; max-width:980px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border-radius:20px; padding:24px; box-shadow: 0 10px 30px rgba(2,6,23,0.7);
+    display:grid; grid-template-columns: 320px 1fr; gap:20px;
+  }
+
+  /* sidebar */
+  .sidebar{
+    background:var(--card); border-radius:14px; padding:20px; min-height:420px;
+  }
+  .title{font-size:20px; font-weight:700; margin:0 0 6px}
+  .subtitle{color:var(--muted); font-size:13px; margin:0 0 18px}
+  .progress{height:10px;background:var(--glass); border-radius:999px; overflow:hidden}
+  .progress > i{display:block;height:100%; background:linear-gradient(90deg,var(--accent),#06b6d4); width:0%}
+
+  .meta{margin-top:18px;font-size:14px}
+  .meta p{margin:8px 0;color:var(--muted)}
+  .btn{
+    display:inline-block; padding:10px 14px; border-radius:10px; background:var(--accent);
+    color:white; text-decoration:none; border:none; cursor:pointer; font-weight:600;
+    box-shadow:0 6px 18px rgba(124,58,237,0.12);
+  }
+  .mutebtn{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.04);}
+
+  /* play area */
+  .stage{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:14px; padding:20px; min-height:420px;
+    display:flex; flex-direction:column;
+  }
+  .hud{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .stage-title{font-size:18px;font-weight:700}
+  .score{color:var(--muted)}
+
+  .card{background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; margin:8px 0;}
+  .question{font-size:18px; margin:6px 0 14px}
+  .choices{display:flex;flex-wrap:wrap;gap:10px}
+  .choice{flex:1 1 calc(33% - 10px); min-width:120px; background:transparent; border:1px solid rgba(255,255,255,0.04);
+    padding:12px;border-radius:10px; cursor:pointer; text-align:center; font-weight:600}
+  .choice:hover{transform:translateY(-4px); transition:all .14s ease}
+  .choice.correct{outline:4px solid rgba(22,163,74,0.18)}
+  .choice.wrong{opacity:.6; outline:4px solid rgba(239,68,68,0.12)}
+  .small{font-size:13px;color:var(--muted); margin-top:8px}
+
+  .hidden{display:none}
+  .center{display:flex;align-items:center;justify-content:center}
+  footer.note{margin-top:auto;color:var(--muted);font-size:13px;text-align:center}
+
+  /* responsive */
+  @media(max-width:880px){
+    .app{grid-template-columns:1fr; padding:14px}
+    .sidebar{order:2}
+  }
+
+  /* nice badges */
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="app" role="application" aria-label="Escape The Classroom">
+
+  <aside class="sidebar" aria-label="اطلاعات بازی">
+    <h1 class="title">Escape The Classroom</h1>
+    <p class="subtitle">یک بازی اتاق‌فرار برای تقویت <b>Vocabulary</b>، <b>Grammar</b>، <b>Listening</b> و <b>Reading</b>.</p>
+
+    <div>
+      <div class="progress" aria-hidden="true"><i id="progbar" style="width:0%"></i></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <div class="small">مرحله <span id="stageNum">1</span>/4</div>
+        <div class="small">امتیاز: <span id="score">0</span></div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <p><span class="badge">تعداد تلاش‌ها:</span> <span id="attempts">0</span></p>
+      <p><span class="badge">رتبهٔ شما:</span> <span id="rank">—</span></p>
+
+      <div style="margin-top:14px">
+        <button id="restartBtn" class="btn">شروع دوباره</button>
+        <button id="muteBtn" class="btn mutebtn" style="margin-left:8px">🔊 صدا</button>
+      </div>
+    </div>
+
+    <p style="margin-top:18px;color:var(--muted);font-size:13px">
+      نکته: برای مرحله شنیداری از صدای دستگاه (Speech Synthesis) استفاده می‌شود؛ اگر کار نکرد، تنظیمات مرورگر را بررسی کن.
+    </p>
+    <footer class="note">طراحی شده برای جشنوارهٔ تدریس برتر — آمادهٔ توسعه و ارائه</footer>
+  </aside>
+
+  <main class="stage" id="mainStage">
+    <div class="hud">
+      <div class="stage-title" id="stageTitle">مرحله 1 — Word Hunt</div>
+      <div class="score">پیشرفت <span id="percent">0%</span></div>
+    </div>
+
+    <div id="contentArea">
+      <!-- content injected by JS -->
+    </div>
+
+    <div style="height:10px"></div>
+  </main>
+
+</div>
+
+<script>
+/* ====== Data (you can extend/replace) ====== */
+const LEVELS = [
+  { id:1, key:'vocab', title:'Word Hunt', hint:'معنی درستِ کلمه را انتخاب کن.', items:[
+      {q:'Bright', answers:['Dark','Smart / Shiny','Slow'], correct:1, explain:'Bright = smart or shining'},
+      {q:'Ancient', answers:['Very new','Very old','Small'], correct:1, explain:'Ancient = very old'},
+      {q:'Refresh', answers:['Make tired','Make fresh or new','Break'], correct:1, explain:'Refresh = make fresh'}
+    ]},
+  { id:2, key:'grammar', title:'Grammar Door', hint:'شکل صحیح را انتخاب کن.', items:[
+      {q:'I ____ to school every day.', answers:['go','goes','going'], correct:0, explain:'I + go'},
+      {q:'She ____ English well.', answers:['speak','speaks','spoke'], correct:1, explain:'She + speaks'},
+      {q:'They ____ dinner at 7.', answers:['has','have','had'], correct:1, explain:'They + have'}
+    ]},
+  { id:3, key:'listening', title:'Audio Lock', hint:'به جمله گوش کن و آخرین کلمه را انتخاب کن.', items:[
+      {q:'The cat is on the ___ .', answers:['table','car','book'], correct:0, speak:'The cat is on the table.'},
+      {q:'Please open the ___.', answers:['window','shoe','apple'], correct:0, speak:'Please open the window.'},
+      {q:'He drinks a glass of ___.', answers:['water','stone','pencil'], correct:0, speak:'He drinks a glass of water.'}
+    ]},
+  { id:4, key:'reading', title:'Story Fix', hint:'جملات را به ترتیب درست بچین.', items:[
+      {q:'Order these: (1) He went home. (2) John finished his work. (3) He ate dinner.', correctOrder:[1,2,3], prompt:'چینش درست را از فهرست انتخاب کن.'},
+      {q:'Order: (1) The sun rose. (2) Birds sang. (3) People woke up.', correctOrder:[1,2,3], prompt:'جملات را به ترتیب قرار بده.'}
+    ]}
+];
+
+/* ====== State ====== */
+let state = {
+  levelIndex: 0,
+  itemIndex: 0,
+  score: 0,
+  attempts: 0,
+  mute:false,
+  completed: false
+};
+
+/* ====== Elements ====== */
+const contentArea = document.getElementById('contentArea');
+const stageTitle = document.getElementById('stageTitle');
+const stageNum = document.getElementById('stageNum');
+const progbar = document.getElementById('progbar');
+const scoreEl = document.getElementById('score');
+const percentEl = document.getElementById('percent');
+const attemptsEl = document.getElementById('attempts');
+const rankEl = document.getElementById('rank');
+const restartBtn = document.getElementById('restartBtn');
+const muteBtn = document.getElementById('muteBtn');
+
+/* ====== Helpers ====== */
+function saveProgress(){ localStorage.setItem('escape_save', JSON.stringify(state)); }
+function loadProgress(){
+  const raw = localStorage.getItem('escape_save');
+  if(raw){ try{ state = Object.assign(state, JSON.parse(raw)); }catch(e){} }
+}
+function speak(text){
+  if(state.mute) return;
+  if('speechSynthesis' in window){
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
+}
+
+/* ====== UI update ====== */
+function updateHUD(){
+  stageNum.textContent = state.levelIndex + 1;
+  scoreEl.textContent = state.score;
+  attemptsEl.textContent = state.attempts;
+  const percent = Math.round(((state.levelIndex + (state.itemIndex/ currentLevelItemsCount())) / LEVELS.length) * 100);
+  percentEl.textContent = percent + '%';
+  progbar.style.width = percent + '%';
+  // simple rank
+  rankEl.textContent = state.score >= 30 ? 'Gold' : (state.score >= 20 ? 'Silver' : (state.score >= 10 ? 'Bronze' : 'Beginner'));
+}
+
+/* ====== Navigation + logic ====== */
+function currentLevel(){ return LEVELS[state.levelIndex]; }
+function currentLevelItemsCount(){
+  const lvl = currentLevel();
+  return lvl ? (lvl.items ? lvl.items.length : 1) : 1;
+}
+
+function start(){
+  loadProgress();
+  renderCurrent();
+  updateHUD();
+}
+
+/* render content based on level */
+function renderCurrent(){
+  const lvl = currentLevel();
+  if(!lvl){ renderComplete(); return; }
+  stageTitle.textContent = `مرحله ${state.levelIndex+1} — ${lvl.title}`;
+  // choose UI by lvl.key
+  if(lvl.key === 'vocab' || lvl.key === 'grammar'){
+    renderChoiceItem(lvl.items[state.itemIndex], lvl.hint);
+  } else if(lvl.key === 'listening'){
+    renderListeningItem(lvl.items[state.itemIndex], lvl.hint);
+  } else if(lvl.key === 'reading'){
+    renderReadingItem(lvl.items[state.itemIndex], lvl.hint);
+  }
+  updateHUD();
+  saveProgress();
+}
+
+/* Generic choice UI */
+function renderChoiceItem(item, hint){
+  contentArea.innerHTML = `
+    <div class="card">
+      <div class="question">${item.q}</div>
+      <div class="small">${hint}</div>
+      <div class="choices" id="choices"></div>
+      <div class="small" id="explain" aria-live="polite"></div>
+    </div>
+  `;
+  const c = document.getElementById('choices');
+  item.answers.forEach((a,i)=>{
+    const btn = document.createElement('button');
+    btn.className='choice';
+    btn.textContent = a;
+    btn.onclick = ()=> handleChoice(i);
+    c.appendChild(btn);
+  });
+
+  function handleChoice(i){
+    state.attempts++;
+    const correct = (i === item.correct);
+    const choiceBtns = Array.from(document.querySelectorAll('.choice'));
+    if(correct){
+      choiceBtns[i].classList.add('correct');
+      document.getElementById('explain').textContent = '✔ درست — ' + (item.explain || '');
+      state.score += 5;
+      speak(item.answers[i]);
+      setTimeout(nextItem, 1200);
+    } else {
+      choiceBtns[i].classList.add('wrong');
+      document.getElementById('explain').textContent = '❌ اشتباه — دوباره تلاش کن';
+      speak('Try again');
+    }
+    updateHUD();
+    saveProgress();
+  }
+}
+
+/* Listening UI */
+function renderListeningItem(item, hint){
+  contentArea.innerHTML = `
+    <div class="card">
+      <div class="question">${item.q}</div>
+      <div class="small">${hint}</div>
+      <div style="display:flex;gap:10px;margin:12px 0;align-items:center">
+        <button class="btn" id="playAudio">🔊 پخش جمله</button>
+        <button class="mutebtn" id="hintBtn">🔁 دوباره</button>
+      </div>
+      <div class="choices" id="choices"></div>
+      <div class="small" id="explain" aria-live="polite"></div>
+    </div>
+  `;
+  const c = document.getElementById('choices');
+  item.answers.forEach((a,i)=>{
+    const btn = document.createElement('button');
+    btn.className='choice';
+    btn.textContent = a;
+    btn.onclick = ()=> handleChoice(i);
+    c.appendChild(btn);
+  });
+
+  document.getElementById('playAudio').onclick = ()=> {
+    speak(item.speak || item.q);
+  };
+
+  document.getElementById('hintBtn').onclick = ()=> {
+    speak(item.speak || item.q);
+  };
+
+  function handleChoice(i){
+    state.attempts++;
+    const correct = (i === item.correct);
+    const choiceBtns = Array.from(document.querySelectorAll('.choice'));
+    if(correct){
+      choiceBtns[i].classList.add('correct');
+      document.getElementById('explain').textContent = '✔ درست!';
+      state.score += 6;
+      setTimeout(nextItem, 900);
+    } else {
+      choiceBtns[i].classList.add('wrong');
+      document.getElementById('explain').textContent = '❌ اشتباه — دوباره گوش کن';
+      speak('Try again');
+    }
+    updateHUD();
+    saveProgress();
+  }
+}
+
+/* Reading / ordering UI */
+function renderReadingItem(item, hint){
+  // show draggable (simple click reorder)
+  const parts = item.q.match(/\(1\).+?\(2\).+?\(3\).+$/) ? item.q.split(/ \(\d\) /).filter(Boolean) : item.q.split('.');
+  // fallback parse: we will extract the parenthetical items from the string
+  const fragments = [];
+  const matches = item.q.match(/\(1\)\s*([^.(]+)\.\s*\(2\)\s*([^.(]+)\.\s*\(3\)\s*([^.(]+)\./);
+  if(matches && matches.length>=4){
+    fragments.push(matches[1].trim() + '.');
+    fragments.push(matches[2].trim() + '.');
+    fragments.push(matches[3].trim() + '.');
+  } else {
+    // naive
+    fragments.push(item.q);
+  }
+
+  // If item has correctOrder, build UI accordingly:
+  contentArea.innerHTML = `
+    <div class="card">
+      <div class="question">${item.prompt || 'چینش را انجام بده'}</div>
+      <div class="small">${hint}</div>
+      <div id="orderArea" style="display:flex;flex-direction:column;gap:10px;margin-top:12px"></div>
+      <div style="margin-top:12px">
+        <button class="btn" id="checkOrder">بررسی ترتیب</button>
+        <button class="mutebtn" id="shuffle">🔀 جابجایی</button>
+        <div class="small" id="orderResult" style="margin-top:8px"></div>
+      </div>
+    </div>
+  `;
+
+  const area = document.getElementById('orderArea');
+  // generate items from the text by splitting on numbered groups if possible
+  let pieces = [];
+  if(item.correctOrder){
+    // attempt to parse out "(1) ... (2) ... (3) ..." pattern
+    const found = item.q.match(/\(1\)\s*([^()]+)\.\s*\(2\)\s*([^()]+)\.\s*\(3\)\s*([^()]+)\./);
+    if(found){ pieces = [found[1].trim()+'.', found[2].trim()+'.', found[3].trim()+'.']; }
+  }
+  if(pieces.length ===0){
+    // fallback: split by '.' and take non-empty
+    pieces = item.q.split('.').map(s=>s.trim()).filter(Boolean).map(s=>s+'.');
+  }
+
+  // render as buttons (click to move up/down)
+  pieces.forEach((p,idx)=>{
+    const btn = document.createElement('button');
+    btn.className='choice';
+    btn.textContent = p;
+    btn.dataset.pos = idx;
+    btn.onclick = ()=> {
+      // move item forward
+      const i = parseInt(btn.dataset.pos);
+      if(i < pieces.length - 1){
+        const t = pieces[i]; pieces[i] = pieces[i+1]; pieces[i+1] = t;
+      } else {
+        // move to start
+        pieces.unshift(pieces.splice(i,1)[0]);
+      }
+      renderPieces();
+    };
+    area.appendChild(btn);
+  });
+
+  function renderPieces(){
+    area.innerHTML = '';
+    pieces.forEach((p,idx)=>{
+      const btn = document.createElement('button');
+      btn.className='choice';
+      btn.textContent = `${idx+1}. ${p}`;
+      btn.dataset.pos = idx;
+      btn.onclick = ()=> {
+        const i = parseInt(btn.dataset.pos);
+        if(i < pieces.length - 1){
+          const t = pieces[i]; pieces[i] = pieces[i+1]; pieces[i+1] = t;
+        } else {
+          pieces.unshift(pieces.splice(i,1)[0]);
+        }
+        renderPieces();
+      };
+      area.appendChild(btn);
+    });
+  }
+
+  document.getElementById('checkOrder').onclick = ()=>{
+    state.attempts++;
+    // build chosen order indexes by matching text with original correctOrder mapping
+    // We'll try to compare text positions: find index of each original sentence in the current array
+    const chosen = pieces.map(p=>p.replace(/^\d+\.\s*/,'').trim());
+    const correct = [];
+    // attempt to get correct text array like earlier
+    let correctText = [];
+    const found = item.q.match(/\(1\)\s*([^()]+)\.\s*\(2\)\s*([^()]+)\.\s*\(3\)\s*([^()]+)\./);
+    if(found) correctText = [found[1].trim()+'.', found[2].trim()+'.', found[3].trim()+'.'];
+    // compare
+    let ok = false;
+    if(correctText.length === pieces.length){
+      ok = true;
+      for(let i=0;i<pieces.length;i++){
+        if(pieces[i].trim() !== correctText[i].trim()) ok = false;
+      }
+    } else {
+      ok = false;
+    }
+
+    const res = document.getElementById('orderResult');
+    if(ok){
+      res.textContent = '✔ ترتیب درست است!';
+      state.score += 8;
+      setTimeout(nextItem, 900);
+    } else {
+      res.textContent = '❌ ترتیب درست نیست — دوباره تلاش کن';
+      speak('Try again');
+    }
+    updateHUD();
+    saveProgress();
+  };
+
+  document.getElementById('shuffle').onclick = ()=>{
+    // simple fisher-yates
+    for(let i=pieces.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+    }
+    renderPieces();
+  };
+}
+
+/* go to next item/level */
+function nextItem(){
+  const lvl = currentLevel();
+  if(!lvl) return renderComplete();
+  if(state.itemIndex < (lvl.items.length - 1)){
+    state.itemIndex++;
+  } else {
+    // next level
+    state.levelIndex++;
+    state.itemIndex = 0;
+    // small reward:
+    state.score += 2;
+  }
+  if(state.levelIndex >= LEVELS.length){
+    renderComplete();
+  } else {
+    renderCurrent();
+  }
+  updateHUD();
+  saveProgress();
+}
+
+/* when all done */
+function renderComplete(){
+  state.completed = true;
+  contentArea.innerHTML = `
+    <div class="card center" style="flex-direction:column;gap:12px">
+      <h2>🎉 تبریک! اتاق را فرار کردی</h2>
+      <p class="small">امتیاز نهایی: <strong id="finalScore">${state.score}</strong></p>
+      <p class="small">تلاش‌ها: ${state.attempts}</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn" id="share">اشتراک‌گذاری نتیجه</button>
+        <button class="mutebtn" id="playAgain">بازی دوباره</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('playAgain').onclick = resetAll;
+  document.getElementById('share').onclick = ()=> {
+    const text = `من در بازی Escape The Classroom امتیاز ${state.score} گرفتم!`;
+    if(navigator.share) navigator.share({title:'Escape The Classroom', text});
+    else alert(text);
+  };
+  updateHUD();
+  saveProgress();
+}
+
+/* reset */
+function resetAll(){
+  state = { levelIndex:0, itemIndex:0, score:0, attempts:0, mute:state.mute, completed:false };
+  localStorage.removeItem('escape_save');
+  renderCurrent();
+  updateHUD();
+}
+
+/* events */
+restartBtn.onclick = resetAll;
+muteBtn.onclick = ()=>{
+  state.mute = !state.mute;
+  muteBtn.textContent = state.mute ? '🔇 بی‌صدا' : '🔊 صدا';
+  saveProgress();
+};
+
+/* keyboard accessibility: number keys to choose */
+document.addEventListener('keydown', (e)=>{
+  const choices = document.querySelectorAll('.choice');
+  if(choices.length && e.key >= '1' && e.key <= String(Math.min(9,choices.length))){
+    const idx = parseInt(e.key)-1;
+    choices[idx].click();
+  }
+});
+
+/* init */
+start();
+
+</script>
+</body>
+</html>
